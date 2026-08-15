@@ -141,6 +141,14 @@ def main() -> None:
         }
     )
 
+    st.subheader("Prediction Preview")
+    st.dataframe(out.head(20), use_container_width=True)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Min Prediction", f"{int(y_pred.min())}")
+    c2.metric("Max Prediction", f"{int(y_pred.max())}")
+    c3.metric("Mean Prediction", f"{float(y_pred.mean()):.1f}")
+
     st.download_button(
         "Download submission CSV",
         data=out.to_csv(index=False).encode("utf-8"),
