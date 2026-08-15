@@ -84,8 +84,8 @@ def model_metrics_table(metadata: dict) -> pd.DataFrame:
 
 
 def main() -> None:
-    st.set_page_config(page_title="breast-cancer-classification-assignment", page_icon="🧪", layout="wide")
-    st.title("breast-cancer-classification-assignment")
+    st.set_page_config(page_title="Breast Cancer Classification Assignment", page_icon="🧪", layout="wide")
+    st.title("Breast Cancer Classification Assignment")
     st.caption("Upload test CSV, choose a model, and view metrics, confusion matrix, and predictions.")
 
     metadata = load_metadata()
@@ -97,7 +97,7 @@ def main() -> None:
         st.error("No trained models found in model/. Run model/train_models.py first.")
         st.stop()
 
-    st.subheader("Overall Test Metrics (All Models)")
+    st.subheader("All Models Compared (on the current test data)")
     metrics_df = model_metrics_table(metadata)
     st.dataframe(metrics_df, use_container_width=True)
 
