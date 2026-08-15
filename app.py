@@ -1,4 +1,5 @@
 import json
+import runpy
 from pathlib import Path
 
 import joblib
@@ -11,6 +12,7 @@ HERE = Path(__file__).resolve().parent
 MODEL_DIR = HERE / "models"
 METRICS_FILE = MODEL_DIR / "metrics.json"
 DEFAULT_TEST_FILE = HERE / "test_data.csv"
+TRAIN_SCRIPT = MODEL_DIR / "train_models.py"
 
 
 def rmsle(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -50,12 +52,38 @@ def load_metadata() -> dict:
         return json.load(f)
 
 
+def _run_training_script() -> None:
+    if not TRAIN_SCRIPT.exists():
+        raise RuntimeError("Missing models/train_models.py needed to generate model artifacts.")
+    runpy.run_path(str(TRAIN_SCRIPT), run_name="__main__")
+
+
+def _load_pickle_models() -> tuple[dict, list[str]]:
+    models = {}
+    errors = []
+    for path in sorted(MODEL_DIR.glob("*.pkl")):
+        try:
+            models[path.stem] = joblib.load(path)
+        except Exception as exc:
+            errors.append(f"{path.name}: {type(exc).__name__}")
+    return models, errors
+
+
 @st.cache_resource
 def load_models() -> dict:
-    models = {}
-    for path in sorted(MODEL_DIR.glob("*.pkl")):
-        models[path.stem] = joblib.load(path)
-    return models
+    models, errors = _load_pickle_models()
+    if models:
+        return models
+
+    # If pickles are incompatible with the cloud environment, regenerate locally.
+    _run_training_script()
+
+    models, errors_after = _load_pickle_models()
+    if models:
+        return models
+
+    err_text = "; ".join(errors_after or errors)
+    raise RuntimeError(f"Could not load or regenerate model artifacts. {err_text}")
 
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
