@@ -58,27 +58,40 @@ def _run_training_script() -> None:
     runpy.run_path(str(TRAIN_SCRIPT), run_name="__main__")
 
 
-def _load_pickle_models() -> tuple[dict, list[str]]:
+def _load_pickle_models(model_names: tuple[str, ...], expected_feature_count: int) -> tuple[dict, list[str]]:
     models = {}
     errors = []
-    for path in sorted(MODEL_DIR.glob("*.pkl")):
+    if model_names:
+        candidate_paths = [MODEL_DIR / f"{name}.pkl" for name in model_names]
+    else:
+        candidate_paths = sorted(MODEL_DIR.glob("*.pkl"))
+
+    for path in candidate_paths:
+        if not path.exists():
+            errors.append(f"{path.name}: missing")
+            continue
         try:
-            models[path.stem] = joblib.load(path)
+            model = joblib.load(path)
+            n_features = getattr(model, "n_features_in_", None)
+            if expected_feature_count > 0 and n_features is not None and n_features != expected_feature_count:
+                errors.append(f"{path.name}: incompatible features ({n_features} != {expected_feature_count})")
+                continue
+            models[path.stem] = model
         except Exception as exc:
             errors.append(f"{path.name}: {type(exc).__name__}")
     return models, errors
 
 
 @st.cache_resource
-def load_models() -> dict:
-    models, errors = _load_pickle_models()
+def load_models(model_names: tuple[str, ...], expected_feature_count: int) -> dict:
+    models, errors = _load_pickle_models(model_names, expected_feature_count)
     if models:
         return models
 
     # If pickles are incompatible with the cloud environment, regenerate locally.
     _run_training_script()
 
-    models, errors_after = _load_pickle_models()
+    models, errors_after = _load_pickle_models(model_names, expected_feature_count)
     if models:
         return models
 
@@ -100,7 +113,9 @@ def main() -> None:
     st.caption("Upload a test CSV, pick a model, and generate predictions.")
 
     metadata = load_metadata()
-    models = load_models()
+    configured_models = tuple(sorted(metadata.get("models", {}).keys()))
+    expected_feature_count = len(metadata.get("feature_columns", []))
+    models = load_models(configured_models, expected_feature_count)
 
     if not models:
         st.error("No trained models found in models/. Run models/train_models.py first.")
