@@ -1,0 +1,73 @@
+{
+  "target": "count",
+  "target_transform": "log1p",
+  "feature_columns": [
+    "season",
+    "holiday",
+    "workingday",
+    "weather",
+    "temp",
+    "atemp",
+    "humidity",
+    "windspeed",
+    "hour",
+    "month",
+    "year",
+    "weekday",
+    "day",
+    "is_weekend",
+    "morning_rush",
+    "evening_rush",
+    "rush_workday",
+    "temp_sq",
+    "humidity_sq",
+    "hour_sin",
+    "hour_cos",
+    "month_sin",
+    "month_cos"
+  ],
+  "models": {
+    "linear_regression": {
+      "path": "models/linear_regression.pkl",
+      "cv_rmsle_mean": 0.6940894109539226,
+      "cv_rmsle_std": 0.012438506314994161,
+      "cv_mae_mean": 68.4346516172626,
+      "trained_on": 10450
+    },
+    "ridge": {
+      "path": "models/ridge.pkl",
+      "cv_rmsle_mean": 0.6940921099676857,
+      "cv_rmsle_std": 0.012420665128980128,
+      "cv_mae_mean": 68.42867303930954,
+      "trained_on": 10450
+    },
+    "lasso": {
+      "path": "models/lasso.pkl",
+      "cv_rmsle_mean": 0.6943286035821774,
+      "cv_rmsle_std": 0.012287622299198692,
+      "cv_mae_mean": 68.3721562059932,
+      "trained_on": 10450
+    },
+    "knn": {
+      "path": "models/knn.pkl",
+      "cv_rmsle_mean": 0.594176948529402,
+      "cv_rmsle_std": 0.01068935918746781,
+      "cv_mae_mean": 45.73925921897162,
+      "trained_on": 10450
+    },
+    "random_forest": {
+      "path": "models/random_forest.pkl",
+      "cv_rmsle_mean": 0.3780874797964048,
+      "cv_rmsle_std": 0.00949162202801693,
+      "cv_mae_mean": 24.234346941904477,
+      "trained_on": 10450
+    },
+    "gradient_boosting": {
+      "path": "models/gradient_boosting.pkl",
+      "cv_rmsle_mean": 0.35909823667455304,
+      "cv_rmsle_std": 0.0077754397493401935,
+      "cv_mae_mean": 24.233887714904427,
+      "trained_on": 10450
+    }
+  }
+}
