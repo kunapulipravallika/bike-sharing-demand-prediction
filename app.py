@@ -141,27 +141,12 @@ def main() -> None:
         }
     )
 
-    st.subheader("Prediction Preview")
-    st.dataframe(out.head(20), use_container_width=True)
-
-    if "count" in original.columns:
-        scores = compute_metrics(original["count"].to_numpy(), y_pred)
-        cols = st.columns(3)
-        for i, (name, value) in enumerate(scores.items()):
-            cols[i].metric(name, f"{value:.4f}")
-
     st.download_button(
         "Download submission CSV",
         data=out.to_csv(index=False).encode("utf-8"),
         file_name="submission.csv",
         mime="text/csv",
     )
-
-    st.subheader("Cross-validation Summary")
-    cv = metadata.get("models", {})
-    if cv:
-        table = pd.DataFrame.from_dict(cv, orient="index").sort_values("cv_rmsle_mean")
-        st.dataframe(table, use_container_width=True)
 
 
 if __name__ == "__main__":
