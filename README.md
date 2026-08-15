@@ -1,4 +1,4 @@
-# bike-sharing-demand-prediction
+# breast-cancer-classification-assignment
 
 Assignment 2 - Breast Cancer Classification
 
@@ -14,7 +14,7 @@ Build and compare multiple machine learning classification models on a single da
 - Submission test file: [test_data.csv](test_data.csv)
 
 ## c) Github repository link
-- Repository: https://github.com/kunapulipravallika/bike-sharing-demand-prediction
+- Repository: https://github.com/kunapulipravallika/breast-cancer-classification-assignment
 
 ## d) Models used and comparison table
 
