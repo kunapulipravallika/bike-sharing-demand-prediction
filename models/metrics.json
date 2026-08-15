@@ -1,73 +1,92 @@
 {
-  "target": "count",
-  "target_transform": "log1p",
+  "target_column": "diagnosis",
   "feature_columns": [
-    "season",
-    "holiday",
-    "workingday",
-    "weather",
-    "temp",
-    "atemp",
-    "humidity",
-    "windspeed",
-    "hour",
-    "month",
-    "year",
-    "weekday",
-    "day",
-    "is_weekend",
-    "morning_rush",
-    "evening_rush",
-    "rush_workday",
-    "temp_sq",
-    "humidity_sq",
-    "hour_sin",
-    "hour_cos",
-    "month_sin",
-    "month_cos"
+    "mean radius",
+    "mean texture",
+    "mean perimeter",
+    "mean area",
+    "mean smoothness",
+    "mean compactness",
+    "mean concavity",
+    "mean concave points",
+    "mean symmetry",
+    "mean fractal dimension",
+    "radius error",
+    "texture error",
+    "perimeter error",
+    "area error",
+    "smoothness error",
+    "compactness error",
+    "concavity error",
+    "concave points error",
+    "symmetry error",
+    "fractal dimension error",
+    "worst radius",
+    "worst texture",
+    "worst perimeter",
+    "worst area",
+    "worst smoothness",
+    "worst compactness",
+    "worst concavity",
+    "worst concave points",
+    "worst symmetry",
+    "worst fractal dimension"
+  ],
+  "positive_class": "benign",
+  "label_order": [
+    "malignant",
+    "benign"
   ],
   "models": {
-    "linear_regression": {
-      "path": "models/linear_regression.pkl",
-      "cv_rmsle_mean": 0.6940894109539226,
-      "cv_rmsle_std": 0.012438506314994161,
-      "cv_mae_mean": 68.4346516172626,
-      "trained_on": 10450
-    },
-    "ridge": {
-      "path": "models/ridge.pkl",
-      "cv_rmsle_mean": 0.6940921099676857,
-      "cv_rmsle_std": 0.012420665128980128,
-      "cv_mae_mean": 68.42867303930954,
-      "trained_on": 10450
-    },
-    "lasso": {
-      "path": "models/lasso.pkl",
-      "cv_rmsle_mean": 0.6943286035821774,
-      "cv_rmsle_std": 0.012287622299198692,
-      "cv_mae_mean": 68.3721562059932,
-      "trained_on": 10450
+    "logistic_regression": {
+      "path": "models/logistic_regression.pkl",
+      "accuracy": 0.9717920656634748,
+      "auc": 0.9913527648159419,
+      "precision": 0.9673739714256101,
+      "recall": 0.9887491264849755,
+      "f1": 0.9777723779484226,
+      "mcc": 0.9402681140503167,
+      "trained_on": 426
     },
     "knn": {
       "path": "models/knn.pkl",
-      "cv_rmsle_mean": 0.594176948529402,
-      "cv_rmsle_std": 0.01068935918746781,
-      "cv_mae_mean": 45.73925921897162,
-      "trained_on": 10450
+      "accuracy": 0.9577017783857731,
+      "auc": 0.9871706003020672,
+      "precision": 0.9432781012091358,
+      "recall": 0.9924528301886791,
+      "f1": 0.9671365443842509,
+      "mcc": 0.9106437503090653,
+      "trained_on": 426
+    },
+    "decision_tree": {
+      "path": "models/decision_tree.pkl",
+      "accuracy": 0.9224623803009575,
+      "auc": 0.9148933254998759,
+      "precision": 0.9411763299063372,
+      "recall": 0.9360587002096435,
+      "f1": 0.9373481151783458,
+      "mcc": 0.8390476831758107,
+      "trained_on": 426
+    },
+    "naive_bayes": {
+      "path": "models/naive_bayes.pkl",
+      "accuracy": 0.9389329685362517,
+      "auc": 0.9860639131218865,
+      "precision": 0.9382896348934084,
+      "recall": 0.96617749825297,
+      "f1": 0.9519467830459696,
+      "mcc": 0.8692245921746542,
+      "trained_on": 426
     },
     "random_forest": {
       "path": "models/random_forest.pkl",
-      "cv_rmsle_mean": 0.3780874797964048,
-      "cv_rmsle_std": 0.00949162202801693,
-      "cv_mae_mean": 24.234346941904477,
-      "trained_on": 10450
-    },
-    "gradient_boosting": {
-      "path": "models/gradient_boosting.pkl",
-      "cv_rmsle_mean": 0.35909823667455304,
-      "cv_rmsle_std": 0.0077754397493401935,
-      "cv_mae_mean": 24.233887714904427,
-      "trained_on": 10450
+      "accuracy": 0.9506155950752394,
+      "auc": 0.9866472661797525,
+      "precision": 0.9528038822775665,
+      "recall": 0.9699510831586304,
+      "f1": 0.9610809895024934,
+      "mcc": 0.894554609296979,
+      "trained_on": 426
     }
   }
 }

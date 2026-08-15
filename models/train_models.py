@@ -4,135 +4,132 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-from sklearn.linear_model import Lasso, LinearRegression, Ridge
-from sklearn.metrics import mean_absolute_error
-from sklearn.model_selection import KFold
-from sklearn.neighbors import KNeighborsRegressor
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score, matthews_corrcoef, precision_score, recall_score, roc_auc_score
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeClassifier
 
 ROOT = Path(__file__).resolve().parent.parent
-DATA_PATH = ROOT / "data" / "bike_train_full.csv"
+DATA_DIR = ROOT / "data"
 MODEL_DIR = ROOT / "models"
+DATASET_PATH = DATA_DIR / "breast_cancer_full.csv"
+TEST_PATH = ROOT / "test_data.csv"
 METRICS_PATH = MODEL_DIR / "metrics.json"
+TARGET_COL = "diagnosis"
 
 
-MODEL_BUILDERS = {
-    "linear_regression": lambda: Pipeline([
-        ("scaler", StandardScaler()),
-        ("model", LinearRegression()),
-    ]),
-    "ridge": lambda: Pipeline([
-        ("scaler", StandardScaler()),
-        ("model", Ridge(alpha=2.0)),
-    ]),
-    "lasso": lambda: Pipeline([
-        ("scaler", StandardScaler()),
-        ("model", Lasso(alpha=0.001, max_iter=10000)),
-    ]),
-    "knn": lambda: Pipeline([
-        ("scaler", StandardScaler()),
-        ("model", KNeighborsRegressor(n_neighbors=7, weights="distance")),
-    ]),
-    "random_forest": lambda: RandomForestRegressor(
-        n_estimators=500,
-        min_samples_leaf=2,
-        random_state=42,
-        n_jobs=-1,
-    ),
-    "gradient_boosting": lambda: GradientBoostingRegressor(
-        n_estimators=500,
-        learning_rate=0.05,
-        max_depth=5,
-        subsample=0.8,
-        random_state=42,
-    ),
-}
+def _model_builders() -> dict:
+    return {
+        "logistic_regression": lambda: Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", LogisticRegression(max_iter=2000, random_state=42)),
+        ]),
+        "knn": lambda: Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", KNeighborsClassifier(n_neighbors=7, weights="distance")),
+        ]),
+        "decision_tree": lambda: DecisionTreeClassifier(max_depth=6, random_state=42),
+        "naive_bayes": lambda: GaussianNB(),
+        "random_forest": lambda: RandomForestClassifier(
+            n_estimators=150,
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1,
+        ),
+    }
 
 
-def rmsle(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    y_pred = np.clip(y_pred, 0, None)
-    return float(np.sqrt(np.mean((np.log1p(y_pred) - np.log1p(y_true)) ** 2)))
+def _build_dataset() -> tuple[pd.DataFrame, list[str]]:
+    raw = load_breast_cancer(as_frame=True)
+    df = raw.frame.copy()
+    df[TARGET_COL] = df["target"].map({0: "malignant", 1: "benign"})
+    df = df.drop(columns=["target"])
+    feature_cols = [c for c in df.columns if c != TARGET_COL]
+    return df, feature_cols
 
 
-def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    frame = df.copy()
-    frame["datetime"] = pd.to_datetime(frame["datetime"], errors="coerce")
+def _cv_metrics(model_builder, X: np.ndarray, y: np.ndarray) -> dict:
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    acc, auc, prec, rec, f1, mcc = [], [], [], [], [], []
 
-    frame["hour"] = frame["datetime"].dt.hour
-    frame["month"] = frame["datetime"].dt.month
-    frame["year"] = frame["datetime"].dt.year
-    frame["weekday"] = frame["datetime"].dt.weekday
-    frame["day"] = frame["datetime"].dt.day
-    frame["is_weekend"] = (frame["weekday"] >= 5).astype(int)
-    frame["morning_rush"] = frame["hour"].isin([7, 8, 9]).astype(int)
-    frame["evening_rush"] = frame["hour"].isin([16, 17, 18, 19]).astype(int)
-    frame["rush_workday"] = ((frame["morning_rush"] | frame["evening_rush"]) & (frame["workingday"] == 1)).astype(int)
-    frame["temp_sq"] = frame["temp"] ** 2
-    frame["humidity_sq"] = frame["humidity"] ** 2
-    frame["hour_sin"] = np.sin(2 * np.pi * frame["hour"] / 24)
-    frame["hour_cos"] = np.cos(2 * np.pi * frame["hour"] / 24)
-    frame["month_sin"] = np.sin(2 * np.pi * frame["month"] / 12)
-    frame["month_cos"] = np.cos(2 * np.pi * frame["month"] / 12)
+    for tr_idx, val_idx in skf.split(X, y):
+        model = model_builder()
+        model.fit(X[tr_idx], y[tr_idx])
+        prob = model.predict_proba(X[val_idx])[:, 1]
+        pred = (prob >= 0.5).astype(int)
 
-    frame = frame.drop(columns=["datetime"], errors="ignore")
-    return frame
+        acc.append(accuracy_score(y[val_idx], pred))
+        auc.append(roc_auc_score(y[val_idx], prob))
+        prec.append(precision_score(y[val_idx], pred, zero_division=0))
+        rec.append(recall_score(y[val_idx], pred, zero_division=0))
+        f1.append(f1_score(y[val_idx], pred, zero_division=0))
+        mcc.append(matthews_corrcoef(y[val_idx], pred))
+
+    return {
+        "accuracy": float(np.mean(acc)),
+        "auc": float(np.mean(auc)),
+        "precision": float(np.mean(prec)),
+        "recall": float(np.mean(rec)),
+        "f1": float(np.mean(f1)),
+        "mcc": float(np.mean(mcc)),
+    }
 
 
 def main() -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
-    train = pd.read_csv(DATA_PATH)
-    processed = engineer_features(train)
+    full_df, feature_cols = _build_dataset()
+    full_df.to_csv(DATASET_PATH, index=False)
 
-    y = processed["count"].to_numpy()
-    y_log = np.log1p(y)
-    drop_cols = ["count", "casual", "registered"]
-    X_df = processed.drop(columns=drop_cols, errors="ignore")
+    train_df, test_df = train_test_split(
+        full_df,
+        test_size=0.25,
+        random_state=42,
+        stratify=full_df[TARGET_COL],
+    )
+    test_df.to_csv(TEST_PATH, index=False)
 
-    feature_columns = X_df.columns.tolist()
-    X = X_df.to_numpy()
+    # Remove stale pickle files to avoid loading wrong model types in the app.
+    for old in MODEL_DIR.glob("*.pkl"):
+        old.unlink()
 
-    kf = KFold(n_splits=5, shuffle=True, random_state=42)
+    y_train = (train_df[TARGET_COL] == "benign").astype(int).to_numpy()
+    X_train = train_df[feature_cols].to_numpy()
 
-    results = {}
-    for model_name, builder in MODEL_BUILDERS.items():
-        scores = []
-        maes = []
-        for tr_idx, val_idx in kf.split(X):
-            model = builder()
-            model.fit(X[tr_idx], y_log[tr_idx])
-            y_pred = np.expm1(model.predict(X[val_idx]))
-            scores.append(rmsle(y[val_idx], y_pred))
-            maes.append(float(mean_absolute_error(y[val_idx], y_pred)))
+    metrics = {}
+    for name, builder in _model_builders().items():
+        model = builder()
+        model.fit(X_train, y_train)
+        model_path = MODEL_DIR / f"{name}.pkl"
+        joblib.dump(model, model_path)
 
-        final_model = builder()
-        final_model.fit(X, y_log)
-
-        model_path = MODEL_DIR / f"{model_name}.pkl"
-        joblib.dump(final_model, model_path)
-
-        results[model_name] = {
+        cv = _cv_metrics(builder, X_train, y_train)
+        metrics[name] = {
             "path": str(model_path.relative_to(ROOT)),
-            "cv_rmsle_mean": float(np.mean(scores)),
-            "cv_rmsle_std": float(np.std(scores)),
-            "cv_mae_mean": float(np.mean(maes)),
-            "trained_on": len(X_df),
+            **cv,
+            "trained_on": int(len(train_df)),
         }
-
-        print(f"Saved {model_name} -> {model_path.name} | RMSLE={np.mean(scores):.5f}")
+        print(f"Saved {name} -> {model_path.name}")
 
     payload = {
-        "target": "count",
-        "target_transform": "log1p",
-        "feature_columns": feature_columns,
-        "models": results,
+        "target_column": TARGET_COL,
+        "feature_columns": feature_cols,
+        "positive_class": "benign",
+        "label_order": ["malignant", "benign"],
+        "models": metrics,
     }
-
     with METRICS_PATH.open("w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
 
+    print(f"Saved dataset -> {DATASET_PATH}")
+    print(f"Saved test data -> {TEST_PATH}")
     print(f"Saved metrics -> {METRICS_PATH}")
 
 
