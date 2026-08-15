@@ -5,12 +5,54 @@ import joblib
 import numpy as np
 import pandas as pd
 import streamlit as st
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.linear_model import Lasso, LinearRegression, Ridge
 from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.model_selection import KFold
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 HERE = Path(__file__).resolve().parent
 MODEL_DIR = HERE / "models"
 METRICS_FILE = MODEL_DIR / "metrics.json"
 DEFAULT_TEST_FILE = HERE / "test_data.csv"
+TRAIN_DATA_FILE = HERE / "data" / "bike_train_full.csv"
+
+
+def _model_builders() -> dict:
+    # Keep cloud fallback models compact so cold-start retraining is fast.
+    return {
+        "linear_regression": lambda: Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", LinearRegression()),
+        ]),
+        "ridge": lambda: Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", Ridge(alpha=2.0)),
+        ]),
+        "lasso": lambda: Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", Lasso(alpha=0.001, max_iter=10000)),
+        ]),
+        "knn": lambda: Pipeline([
+            ("scaler", StandardScaler()),
+            ("model", KNeighborsRegressor(n_neighbors=7, weights="distance")),
+        ]),
+        "random_forest": lambda: RandomForestRegressor(
+            n_estimators=80,
+            min_samples_leaf=5,
+            random_state=42,
+            n_jobs=-1,
+        ),
+        "gradient_boosting": lambda: GradientBoostingRegressor(
+            n_estimators=250,
+            learning_rate=0.05,
+            max_depth=5,
+            subsample=0.8,
+            random_state=42,
+        ),
+    }
 
 
 def rmsle(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -53,8 +95,64 @@ def load_metadata() -> dict:
 @st.cache_resource
 def load_models() -> dict:
     models = {}
+    load_errors = []
     for path in sorted(MODEL_DIR.glob("*.pkl")):
-        models[path.stem] = joblib.load(path)
+        try:
+            models[path.stem] = joblib.load(path)
+        except Exception as exc:
+            load_errors.append((path.name, exc))
+
+    if models:
+        return models
+
+    # If all pickles fail to unpickle (common on cloud env/version mismatch),
+    # rebuild fresh models from training CSV.
+    if not TRAIN_DATA_FILE.exists():
+        if load_errors:
+            msg = "; ".join([f"{name}: {type(err).__name__}" for name, err in load_errors])
+            raise RuntimeError(f"Model files could not be loaded and no training data is available. {msg}")
+        return models
+
+    train = pd.read_csv(TRAIN_DATA_FILE)
+    processed = engineer_features(train)
+    y = processed["count"].to_numpy()
+    y_log = np.log1p(y)
+    X_df = processed.drop(columns=["count", "casual", "registered"], errors="ignore")
+    X = X_df.to_numpy()
+
+    builders = _model_builders()
+    kf = KFold(n_splits=3, shuffle=True, random_state=42)
+    results = {}
+    for model_name, builder in builders.items():
+        scores = []
+        for tr_idx, val_idx in kf.split(X):
+            model = builder()
+            model.fit(X[tr_idx], y_log[tr_idx])
+            pred = np.expm1(model.predict(X[val_idx]))
+            scores.append(rmsle(y[val_idx], pred))
+
+        final_model = builder()
+        final_model.fit(X, y_log)
+        models[model_name] = final_model
+        results[model_name] = {
+            "path": f"models/{model_name}.pkl",
+            "cv_rmsle_mean": float(np.mean(scores)),
+            "cv_rmsle_std": float(np.std(scores)),
+            "trained_on": int(len(X_df)),
+        }
+
+    payload = {
+        "target": "count",
+        "target_transform": "log1p",
+        "feature_columns": X_df.columns.tolist(),
+        "models": results,
+    }
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    for model_name, model in models.items():
+        joblib.dump(model, MODEL_DIR / f"{model_name}.pkl")
+    with METRICS_FILE.open("w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
     return models
 
 
