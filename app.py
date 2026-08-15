@@ -127,7 +127,9 @@ def main() -> None:
     X = test_df[feature_columns].copy()
     model = models[model_name]
     y_pred_num = model.predict(X)
-    y_pred_label = pd.Series(y_pred_num).map({0: "benign", 1: "malignant"}).fillna(y_pred_num)
+    pred_series = pd.Series(y_pred_num)
+    y_pred_label = pred_series.map({0: "benign", 1: "malignant"})
+    y_pred_label = y_pred_label.where(y_pred_label.notna(), pred_series.astype(str))
 
     out = test_df.copy()
     out["predicted_diagnosis"] = y_pred_label
