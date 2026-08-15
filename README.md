@@ -2,6 +2,10 @@
 
 Assignment 2 - Breast Cancer Classification
 
+## Student details
+- Name: Kunapuli Pravallika
+- BITS ID: 2025AC05118
+
 ## a) Problem statement
 Build and compare multiple machine learning classification models on a single dataset and deploy an interactive Streamlit app that allows model selection, test-data upload, and model result visualization.
 
@@ -15,6 +19,9 @@ Build and compare multiple machine learning classification models on a single da
 
 ## c) Github repository link
 - Repository: https://github.com/kunapulipravallika/breast-cancer-classification-assignment
+
+## Live Streamlit app link
+- App: https://mprvcqgdcbrrbpkspqbmnd.streamlit.app/
 
 ## d) Models used and comparison table
 
@@ -73,5 +80,4 @@ Overall winner for this dataset: Random Forest (Ensemble)
 
 ## Submission notes
 - Add your BITS Virtual Lab execution screenshot to your final PDF.
-- Add your deployed Streamlit app URL in this README before final submission.
 - Copy this README content into your submitted PDF in the required order.
