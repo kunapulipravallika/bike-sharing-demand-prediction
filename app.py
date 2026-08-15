@@ -84,8 +84,8 @@ def model_metrics_table(metadata: dict) -> pd.DataFrame:
 
 
 def main() -> None:
-    st.set_page_config(page_title="Breast Cancer Classification", page_icon="🧪", layout="wide")
-    st.title("Breast Cancer Classification - Assignment 2")
+    st.set_page_config(page_title="bike-sharing-demand-prediction", page_icon="🧪", layout="wide")
+    st.title("bike-sharing-demand-prediction")
     st.caption("Upload test CSV, choose a model, and view metrics, confusion matrix, and predictions.")
 
     metadata = load_metadata()

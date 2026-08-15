@@ -1,4 +1,6 @@
-# Assignment 2 - Breast Cancer Classification
+# bike-sharing-demand-prediction
+
+Assignment 2 - Breast Cancer Classification
 
 ## a) Problem statement
 Build and compare multiple machine learning classification models on a single dataset and deploy an interactive Streamlit app that allows model selection, test-data upload, and model result visualization.
